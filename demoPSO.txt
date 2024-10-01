@@ -1,0 +1,110 @@
+import math
+import numpy as np
+
+# Hyperparameters to optimize
+DIMENSIONS = 7  # Number of dimensions (7 hyperparameters)
+
+# Lower and upper boundaries for each hyperparameter
+B_LO = [16, 2, 16, 0.0001, 10, 16, 10]   # Lower bounds: filters, kernel_size, units, learning_rate, epochs, batch_size, iterations
+B_HI = [256, 5, 256, 0.1, 100, 128, 100] # Upper bounds: filters, kernel_size, units, learning_rate, epochs, batch_size, iterations
+
+POPULATION = 20             # Number of particles in the swarm
+V_MAX = 0.1                 # Maximum velocity value
+PERSONAL_C = 2.0            # Personal coefficient factor
+SOCIAL_C = 2.0              # Social coefficient factor
+CONVERGENCE = 0.001         # Convergence value
+MAX_ITER = 100              # Maximum number of iterations
+
+# Particle class
+class Particle():
+    def __init__(self, pos, velocity):
+        self.pos = pos
+        self.velocity = velocity
+        self.best_pos = self.pos.copy()
+        self.pos_z = cost_function(self.pos)
+
+class Swarm():
+    def __init__(self, pop, v_max):
+        self.particles = []             # List of particles in the swarm
+        self.best_pos = None            # Best particle of the swarm
+        self.best_pos_z = math.inf      # Best particle of the swarm
+
+        for _ in range(pop):
+            pos = np.array([np.random.uniform(low, high) for low, high in zip(B_LO, B_HI)])
+            velocity = np.random.rand(DIMENSIONS) * v_max
+            particle = Particle(pos, velocity)
+            self.particles.append(particle)
+            if self.best_pos is None or particle.pos_z < self.best_pos_z:
+                self.best_pos = particle.pos.copy()
+                self.best_pos_z = particle.pos_z
+
+# Cost function to evaluate performance (e.g., validation loss or accuracy)
+def cost_function(params):
+    # Example: Assume a deep learning model with CNN and LSTM components
+    filters, kernel_size, units, learning_rate, epochs, batch_size, iterations = params
+    
+    # Replace the following line with actual model training and evaluation logic
+    # For example, training a model with the given parameters and returning validation loss
+    # cost = train_and_evaluate_model(filters, kernel_size, units, learning_rate, epochs, batch_size, iterations)
+    cost = np.sum(params)  # Example cost function (to be replaced)
+    return cost
+
+def particle_swarm_optimization():
+    # Initialize swarm
+    swarm = Swarm(POPULATION, V_MAX)
+    inertia_weight = 0.5 + (np.random.rand()/2)
+    
+    curr_iter = 0
+    while curr_iter < MAX_ITER:
+        for particle in swarm.particles:
+            for i in range(DIMENSIONS):
+                r1 = np.random.uniform(0, 1)
+                r2 = np.random.uniform(0, 1)
+                
+                # Update particle's velocity
+                personal_coefficient = PERSONAL_C * r1 * (particle.best_pos[i] - particle.pos[i])
+                social_coefficient = SOCIAL_C * r2 * (swarm.best_pos[i] - particle.pos[i])
+                new_velocity = inertia_weight * particle.velocity[i] + personal_coefficient + social_coefficient
+
+                # Check if velocity is exceeded
+                if new_velocity > V_MAX:
+                    particle.velocity[i] = V_MAX
+                elif new_velocity < -V_MAX:
+                    particle.velocity[i] = -V_MAX
+                else:
+                    particle.velocity[i] = new_velocity
+
+            # Update particle's current position
+            particle.pos += particle.velocity
+            particle.pos_z = cost_function(particle.pos)
+
+            # Update particle's best known position
+            if particle.pos_z < cost_function(particle.best_pos):
+                particle.best_pos = particle.pos.copy()
+
+                # Update swarm's best known position
+                if particle.pos_z < swarm.best_pos_z:
+                    swarm.best_pos = particle.pos.copy()
+                    swarm.best_pos_z = particle.pos_z
+
+            # Check if particle is within boundaries
+            for i in range(DIMENSIONS):
+                if particle.pos[i] > B_HI[i]:
+                    particle.pos[i] = np.random.uniform(B_LO[i], B_HI[i])
+                    particle.pos_z = cost_function(particle.pos)
+                if particle.pos[i] < B_LO[i]:
+                    particle.pos[i] = np.random.uniform(B_LO[i], B_HI[i])
+                    particle.pos_z = cost_function(particle.pos)
+
+        # Check for convergence
+        if abs(swarm.best_pos_z - GLOBAL_BEST) < CONVERGENCE:
+            print("The swarm has met convergence criteria after " + str(curr_iter) + " iterations.")
+            break
+        curr_iter += 1
+
+    # Print the optimal result
+    print(f"Optimal position: {swarm.best_pos}")
+    print(f"Optimal cost: {swarm.best_pos_z}")
+
+if __name__ == "__main__":
+    particle_swarm_optimization()
